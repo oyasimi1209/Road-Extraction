@@ -50,6 +50,8 @@ Numpy == 1.16.3
 
 **1. Download dataset and prepare for the code**
 
+We provide the Shaoxing dataset via [Google drive](https://drive.google.com/file/d/1UGfDR2p2PLkzlDuDeO0hxDanfMc-y4Ee/view?usp=sharing).
+
 If your road ground-truth is only in segmentation format, then you may have to first convert it to graph format (through `mapextract.py`) for centerline tracing process.
 
  **2. Boosting segmentation**
