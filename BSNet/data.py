@@ -88,10 +88,14 @@ def randomRotate90(image, mask, u=0.5):
 
     return image, mask
 
-def default_loader(id, sat_dir,lab_dir):
-    img = cv2.imread(os.path.join(sat_dir,'{}_sat.png').format(id))
-    mask = cv2.imread(os.path.join(lab_dir+'{}_mask.png').format(id), cv2.IMREAD_GRAYSCALE)
+def default_loader(id, sat_dir, lab_dir):
+    img = cv2.imread(os.path.join(sat_dir, f'{id}_sat.png'))
+    mask = cv2.imread(os.path.join(lab_dir, f'{id}_osm.png'), cv2.IMREAD_GRAYSCALE)
 
+    if img is None:
+        raise ValueError(f"Could not load image: {os.path.join(sat_dir, f'{id}_sat.png')}")
+    if mask is None:
+        raise ValueError(f"Could not load mask: {os.path.join(lab_dir, f'{id}_osm.png')}")
 
     img = randomHueSaturationValue(img,
                                    hue_shift_limit=(-30, 30),

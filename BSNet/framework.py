@@ -1,16 +1,16 @@
 import torch
 import torch.nn as nn
-from torch.autograd import Variable as V
-from tensorboardX import SummaryWriter
+# from torch.autograd import Variable as V
 import cv2
 import numpy as np
 import os
 from loss import loss_func, dice_bce_loss
+from torch.utils.tensorboard import SummaryWriter
 
 class MyFrame():
     def __init__(self, net, lr, name, evalmode = False):
-        self.model = net
-        self.cuda_net = torch.nn.DataParallel(self.model, device_ids=range(torch.cuda.device_count()))
+        self.model = net().cuda()  # 先创建模型并移到GPU
+        self.cuda_net = torch.nn.DataParallel(self.model)  # 简化DataParallel的使用
         #self.optimizer = torch.optim.RMSprop(params=self.net.parameters(), lr=lr)
         if evalmode:
             for i in self.model.modules():
@@ -47,6 +47,8 @@ class MyFrame():
             self.old_lr = self.lr
             self.averageloss = []
 
+            # 初始化tensorboard writer
+            os.makedirs(self.tensorborad_dir, exist_ok=True)
             self.writer = SummaryWriter(self.tensorborad_dir)
             self.counter = 0
 
@@ -89,19 +91,6 @@ class MyFrame():
             self.loss = self.criterionSeg(self.segpred, self.seggt) / accum_steps
             self.averageloss += [self.loss.data * accum_steps]
 
-        loss_pred, loss_vgg = 0., 0.
-        for i in range(len(results)):
-            loss_pred += (i + 1) * self.loss_pred(labels, results[i][0])
-            for j in range(len(gt_vgg)):
-                loss_vgg += (i + 1) * self.loss_topo(gt_vgg[j], results[i][1][j])
-        coeff = 0.5 * len(results) * (len(results) + 1)
-        curr_loss_pred = loss_pred / coeff
-        curr_loss_vgg = loss_vgg / coeff
-
-        train_loss = curr_loss_pred + 0.1 * curr_loss_vgg
-        train_loss.backward()
-
-        # self.seggt = torch.squeeze(self.seggt, dim=1)
         if isTrain:
             self.loss.backward()
         return self.averageloss
@@ -153,7 +142,7 @@ class MyFrame():
         torch.save(self.cuda_net.state_dict(), path)
         
     def load(self, path):
-        dict=torch.load(path)
+        dict = torch.load(path, weights_only=True)
         self.cuda_net.load_state_dict(dict)
     
     def update_lr_poly(self, step, total_step, mylog, th):
@@ -180,23 +169,13 @@ class MyFrame():
         self.old_lr = new_lr
 
     def update_tensorboard(self, step):
-        if self.isTrain:
-            # self.writer.add_scalar(self.net_name + '/Accuracy/', data[0], step)
-            # self.writer.add_scalar(self.net_name + '/Accuracy_Class/', data[1], step)
-            # self.writer.add_scalar(self.net_name + '/Mean_IoU/', data[2], step)
-            # self.writer.add_scalar(self.net_name + '/FWAV_Accuracy/', data[3], step)
-
+        if self.isTrain and hasattr(self, 'averageloss') and len(self.averageloss) > 0:
             self.trainingavgloss = sum(self.averageloss)/len(self.averageloss)
-            self.writer.add_scalars(self.net_name + '/loss', {"train": self.trainingavgloss}, step)
-
-            self.writer.add_scalar("learning rate",self.old_lr,step)
-
-            # file_name = os.path.join(self.save_dir, 'MIoU.txt')
-            # with open(file_name, 'wt') as opt_file:
-            #     opt_file.write('%f\n' % (data[2]))
-            # self.writer.add_scalars('losses/'+self.opt.name, {"train": self.trainingavgloss,
-            #                                                  "val": np.mean(self.averageloss)}, step)
+            if hasattr(self, 'writer'):
+                self.writer.add_scalar(self.net_name + '/loss', self.trainingavgloss, step)
+                self.writer.add_scalar("learning rate", self.old_lr, step)
             self.averageloss = []
+
     def close_tensorboard(self):
         self.writer.close()
 

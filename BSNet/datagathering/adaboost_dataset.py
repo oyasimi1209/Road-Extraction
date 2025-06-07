@@ -65,8 +65,11 @@ def generate_boosting_data(train_paras):
             mask[gray_mask < 128] = 0
             mask[gray_mask >= 128] = 255
 
-        gt_name = image_name[:-7] + 'lab.png'
+        gt_name = image_name[:-7] + 'osm.png'
         gt = cv2.imread(gt_dir + gt_name, 0)
+        if gt is None:
+            print(f"Warning: Could not read ground truth file: {gt_dir + gt_name}")
+            continue
         dilated_kernel = np.ones((3, 3))
         dilated_gt = cv2.dilate(gt, dilated_kernel)
         # cv2.imwrite("test.png",dilated_gt)

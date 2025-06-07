@@ -3,14 +3,15 @@ from train_tiny import train_operation
 import os
 import time
 import sys
+import subprocess  # 使用subprocess替代cmd
 
 
 total_classifiers = 5
-image_list_dir = "./boost_train/txt_files/massa/"
-logfile_dir = "./boost_train/logs/"
-model_dir = './boost_train/weights/'
-image_dir = '~/data/tiny_dataset/sat/'
-gt_dir = '~/data/tiny_dataset/lab/'
+image_list_dir = os.path.join(os.path.dirname(__file__), "boost_train/txt_files/massa/")
+logfile_dir = os.path.join(os.path.dirname(__file__), "boost_train/logs/")
+model_dir = os.path.join(os.path.dirname(__file__), 'boost_train/weights/')
+image_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data/Shaoxing/train_satellite/')
+gt_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data/Shaoxing/train_label/')
 image_prob_file_save_dir = image_list_dir
 image_name_file_save_dir = image_list_dir
 if os.path.isdir(image_list_dir):
@@ -18,7 +19,8 @@ if os.path.isdir(image_list_dir):
 else:
     os.mkdir(image_list_dir)
 
-train_id = sys.argv[1]
+# 添加默认的训练ID
+train_id = sys.argv[1] if len(sys.argv) > 1 else "1"
 # train_id=1
 if os.path.exists(image_list_dir+"train_image_file_1.txt"):
     pass
