@@ -1,7 +1,7 @@
 """
 Codes of LinkNet based on https://github.com/snakers4/spacenet-three
 """
-
+import torch
 import torch.nn as nn
 
 from torchvision import models
@@ -9,7 +9,7 @@ import torch.nn.functional as F
 
 from functools import partial
 
-from networks.base_model import *
+# from networks.base_model import *
 import numpy as np
 
 nonlinearity = partial(F.relu,inplace=True)
@@ -159,7 +159,7 @@ class DinkNet34(nn.Module):
     def __init__(self):
         super(DinkNet34, self).__init__()
 
-        resnet = models.resnet34(pretrained=True)
+        resnet = models.resnet34(weights=None)  # 不使用预训练权重
         self.firstconv = resnet.conv1
         self.firstbn = resnet.bn1
         self.firstrelu = resnet.relu

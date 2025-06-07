@@ -132,3 +132,9 @@ dmypy.json
 # Custom ignored folders
 Shaoxing/
 Output/
+.idea
+out
+BSNet/boost_train/txt_files
+BSNet/log
+BSNet/boost_train
+.vscode
