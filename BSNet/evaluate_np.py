@@ -59,63 +59,74 @@ if __name__=="__main__":
     is_gt_buffer = False # !!!!!
     print("!!!!! buffer: "+str(is_gt_buffer))
 
-    img_root = '~/data/Massachusetts/test/sat/'
-    lab_root = '~/data/Massachusetts/test/lab/'
-    mask_root = '~/pyprojects/out/result_seg_roadnet/'
+    # 修改路径指向你的数据位置
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    img_root = os.path.join(base_dir, 'data/Shaoxing/test_satellite/')
+    lab_root = os.path.join(base_dir, 'data/Shaoxing/test_label/')
+    mask_root = os.path.join(base_dir, 'output/test_results/')
 
-    log_name = "seg_roadnet"
-    mylogs = open('~/pyprojects/out/result_boost/eval_log/' + log_name + '.log', 'w')
-    region_name_list = ['c', 'g', 'k', 'o']
-    for region_name in region_name_list:
-        print("-------------evaluate region: " + region_name + "-------------", file=mylogs)
-        print("-------------evaluate region: " + region_name + "-------------")
-        for i in range(-2, 2):
-            for j in range(-2, 2):
-                img = img_root + region_name + "_" + str(i) + "_" + str(j) + "_sat.png"
-                lab = lab_root + region_name + "_" + str(i) + "_" + str(j) + "_lab.png"
-                mask = mask_root + region_name + "_" + str(i) + "_" + str(j) + "_mask.png"
-                if os.path.exists(img):
-                    if os.path.exists(lab):
-                        if os.path.exists(mask):
-                            image = cv2.imread(img)
-                            prediction = cv2.imread(mask, cv2.IMREAD_GRAYSCALE)
-                            truevalue = cv2.imread(lab, cv2.IMREAD_GRAYSCALE)
-                            dilated_kernel = np.ones((3,3))
-                            gt_buffer = cv2.dilate(truevalue,dilated_kernel)
+    log_dir = os.path.join(base_dir, 'BSNet/evaluate/logs/')
+    os.makedirs(log_dir, exist_ok=True)
+    log_name = "initial_seg_evaluation"
+    mylogs = open(os.path.join(log_dir, log_name + '.log'), 'w')
 
-                            thin_gt = thin_image(lab)
-                            num_mask = np.sum(thin_gt[prediction > 128]) / 255
-                            num_gt = np.sum(thin_gt) / 255
-                            completeness = num_mask / (num_gt + 0.00001)
-                            if num_gt != 0:
-                                completeness_list.append(completeness)
+    # 获取所有测试图片
+    test_images = [f for f in os.listdir(img_root) if f.endswith('_sat.png')]
+    
+    for image_name in test_images:
+        base_name = image_name[:-8]  # 移除 '_sat.png'
+        img = os.path.join(img_root, image_name)
+        lab = os.path.join(lab_root, base_name + '_osm.png')
+        mask = os.path.join(mask_root, base_name + '_mask.png')
+        
+        if os.path.exists(img) and os.path.exists(lab) and os.path.exists(mask):
+            print(f'Evaluating {image_name}', file=mylogs)
+            print(f'Evaluating {image_name}')
+            
+            image = cv2.imread(img)
+            prediction = cv2.imread(mask, cv2.IMREAD_GRAYSCALE)
+            truevalue = cv2.imread(lab, cv2.IMREAD_GRAYSCALE)
+            
+            if truevalue is None:
+                print(f"Warning: Could not read label file: {lab}")
+                continue
+                
+            dilated_kernel = np.ones((3,3))
+            gt_buffer = cv2.dilate(truevalue, dilated_kernel)
 
-                            if np.sum(truevalue) < 10:
-                                continue
-                            image = np.ndarray.astype(image, dtype='uint8')
-                            prediction = np.array(prediction, np.float32) / 255.0
-                            truevalue = np.array(truevalue, np.float32) / 255.0
-                            truevalue[truevalue >= 0.5] = 1
-                            truevalue[truevalue <= 0.5] = 0
-                            gt_buffer = np.array(gt_buffer, np.float32) / 255.0
-                            gt_buffer[gt_buffer >= 0.5] = 1
-                            gt_buffer[gt_buffer <= 0.5] = 0
+            thin_gt = thin_image(lab)
+            num_mask = np.sum(thin_gt[prediction > 128]) / 255
+            num_gt = np.sum(thin_gt) / 255
+            completeness = num_mask / (num_gt + 0.00001)
+            if num_gt != 0:
+                completeness_list.append(completeness)
 
-                            # initialize result class that calculates and stores all evaluation measures
-                            print('test image ', str(i), '_', str(j), file=mylogs)
-                            print('test image ', str(i), '_', str(j))
-                            res = IOU(prediction, truevalue, gt_buffer, is_buffer=is_gt_buffer)
-                            res.cal_iou(mylogs)
+            if np.sum(truevalue) < 10:
+                continue
+            image = np.ndarray.astype(image, dtype='uint8')
+            prediction = np.array(prediction, np.float32) / 255.0
+            truevalue = np.array(truevalue, np.float32) / 255.0
+            truevalue[truevalue >= 0.5] = 1
+            truevalue[truevalue <= 0.5] = 0
+            gt_buffer = np.array(gt_buffer, np.float32) / 255.0
+            gt_buffer[gt_buffer >= 0.5] = 1
+            gt_buffer[gt_buffer <= 0.5] = 0
 
-                            print(',Completeness:', round(completeness, 2), file=mylogs)
-                            print(',Completeness:', round(completeness, 2))
+            # initialize result class that calculates and stores all evaluation measures
+            print('test image ', base_name, file=mylogs)
+            print('test image ', base_name)
+            res = IOU(prediction, truevalue, gt_buffer, is_buffer=is_gt_buffer)
+            res.cal_iou(mylogs)
 
-                            # append to evaluation lists
-                            recall_list.append(res.recall)
-                            precision_list.append(res.precision)
-                            f1_list.append(res.f1)
-                            accuracy_list.append(res.accuracy)
-                            iou_list.append(res.iou)
+            print(',Completeness:', round(completeness, 2), file=mylogs)
+            print(',Completeness:', round(completeness, 2))
+
+            # append to evaluation lists
+            recall_list.append(res.recall)
+            precision_list.append(res.precision)
+            f1_list.append(res.f1)
+            accuracy_list.append(res.accuracy)
+            iou_list.append(res.iou)
 
 
     # print the results for the evaluation measures to the command line

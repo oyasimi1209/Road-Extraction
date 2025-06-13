@@ -10,8 +10,8 @@ total_classifiers = 5
 image_list_dir = os.path.join(os.path.dirname(__file__), "boost_train/txt_files/massa/")
 logfile_dir = os.path.join(os.path.dirname(__file__), "boost_train/logs/")
 model_dir = os.path.join(os.path.dirname(__file__), 'boost_train/weights/')
-image_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data/Shaoxing/train_satellite/')
-gt_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data/Shaoxing/train_label/')
+image_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data/Shaoxing/test_satellite/')
+gt_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data/Shaoxing/test_label/')
 image_prob_file_save_dir = image_list_dir
 image_name_file_save_dir = image_list_dir
 if os.path.isdir(image_list_dir):

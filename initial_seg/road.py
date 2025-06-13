@@ -19,14 +19,34 @@ BATCHSIZE_PER_CARD = 2
 def train(strDataPath, strModelPath, strOutPath):
     print("......Training......")
     tic = time()
-    timestamp = datetime.fromtimestamp(tic).strftime('%Y%m%d-%H:%M')
-    NAME = 'road_' + timestamp
-    print(NAME)
+    timestamp = datetime.fromtimestamp(tic).strftime('%Y%m%d-%H%M')
+    NAME = f'road_{timestamp}.th'
+    print(f"Model will be saved as: {NAME}")
     SHAPE = (1024, 1024)
-    sat_dir = strDataPath + '/train/sat/'
-    lab_dir = strDataPath + '/train/lab/'
-    imagelist = filter(lambda x: x.find('sat') != -1, os.listdir(sat_dir))
-    trainlist = map(lambda x: x[:-8], imagelist)
+    
+    # Convert relative paths to absolute paths if needed
+    if not os.path.isabs(strDataPath):
+        strDataPath = os.path.abspath(strDataPath)
+    if not os.path.isabs(strModelPath):
+        strModelPath = os.path.abspath(strModelPath)
+    if not os.path.isabs(strOutPath):
+        strOutPath = os.path.abspath(strOutPath)
+    
+    sat_dir = os.path.join(strDataPath, 'train_satellite')
+    lab_dir = os.path.join(strDataPath, 'train_label')
+    
+    # Check if directories exist
+    if not os.path.exists(sat_dir):
+        raise FileNotFoundError(f"Satellite images directory not found: {sat_dir}")
+    if not os.path.exists(lab_dir):
+        raise FileNotFoundError(f"Label images directory not found: {lab_dir}")
+        
+    print(f"Using satellite images from: {sat_dir}")
+    print(f"Using label images from: {lab_dir}")
+    
+    # Get all satellite image files and extract their base names
+    imagelist = [f for f in os.listdir(sat_dir) if f.endswith('_sat.png')]
+    trainlist = [f[:-8] for f in imagelist]  # Remove '_sat.png' to get base name
 
     solver = MyFrame(DLinkNet34, dice_bce_loss, 5e-4)
     batchsize = torch.cuda.device_count() * BATCHSIZE_PER_CARD
@@ -68,7 +88,9 @@ def train(strDataPath, strModelPath, strOutPath):
         else:
             no_optim = 0
             train_epoch_best_loss = train_epoch_loss
-            solver.save(strModelPath + '/' + NAME + '.th')
+            model_path = os.path.join(strModelPath, NAME)
+            solver.save(model_path)
+            print(f"Saved model to: {model_path}")
         if no_optim > 6:
             print('early stop at %d epoch' % epoch, file=mylog)
             print('early stop at %d epoch' % epoch)
@@ -215,7 +237,10 @@ def test(strDataPath, strModelPath, strOutPath):
     solver = TTAFrame(DLinkNet34)
     print("WARNING: please give the path to the model you want to test")
     print("e.g., /road/model/road_20200421-11:28.th")
-    solver.load(strModelPath)
+    
+    # Remove .th extension if it exists in strModelPath to avoid double extension
+    model_path = strModelPath[:-3] if strModelPath.endswith('.th') else strModelPath
+    solver.load(model_path + '.th')
     tic = time()
     target_grey = strOutPath + '/results/'
     if os.path.isdir(target_grey):
@@ -240,10 +265,16 @@ def test(strDataPath, strModelPath, strOutPath):
 
 
 if __name__=="__main__":
-    dic = {"task":"test",
-    "data":"data/test/",
-    "model":"model/massa_dlinknet.th",
-    "out":"result/"}
+    # 使用绝对路径
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    workspace_dir = os.path.dirname(base_dir)
+    
+    dic = {
+        "task": "train",
+        "data": os.path.join(workspace_dir, "data", "Shaoxing"),
+        "model": os.path.join(workspace_dir, "model"),
+        "out": os.path.join(workspace_dir, "output")
+    }
 
     if 'data' in dic:
         strDataPath = dic['data']

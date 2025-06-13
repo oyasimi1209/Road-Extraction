@@ -86,9 +86,25 @@ def randomRotate90(image, mask, u=0.5):
 
     return image, mask
 
-def default_loader(id, sat_dir,lab_dir):
-    img = cv2.imread(os.path.join(sat_dir,'{}_sat.png').format(id))
-    mask = cv2.imread(os.path.join(lab_dir+'{}_lab.png').format(id), cv2.IMREAD_GRAYSCALE)
+def default_loader(id, sat_dir, lab_dir):
+    # Fix path formatting and add error handling
+    sat_path = os.path.join(sat_dir, f'{id}_sat.png')
+    lab_path = os.path.join(lab_dir, f'{id}_osm.png')  # Changed from _lab.png to _osm.png
+    
+    # Check if files exist
+    if not os.path.exists(sat_path):
+        raise FileNotFoundError(f"Satellite image not found: {sat_path}")
+    if not os.path.exists(lab_path):
+        raise FileNotFoundError(f"Label image not found: {lab_path}")
+    
+    img = cv2.imread(sat_path)
+    if img is None:
+        raise ValueError(f"Failed to load satellite image: {sat_path}")
+    
+    mask = cv2.imread(lab_path, cv2.IMREAD_GRAYSCALE)
+    if mask is None:
+        raise ValueError(f"Failed to load label image: {lab_path}")
+    
     #--------------------------------------------------------
     img = randomHueSaturationValue(img,
                                    hue_shift_limit=(-30, 30),
@@ -103,8 +119,12 @@ def default_loader(id, sat_dir,lab_dir):
     img, mask = randomHorizontalFlip(img, mask)
     img, mask = randomVerticleFlip(img, mask)
     img, mask = randomRotate90(img, mask)
+    
     #--------------------------------------------------------
-
+    # Ensure mask is 2D before expanding dimensions
+    if len(mask.shape) == 3:
+        mask = mask[:,:,0]  # Take first channel if it's somehow 3D
+    
     mask = np.expand_dims(mask, axis=2)
     img = np.array(img, np.float32).transpose(2,0,1)/255.0 * 3.2 -1.6
     mask = np.array(mask, np.float32).transpose(2,0,1)/255.0

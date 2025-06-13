@@ -135,7 +135,7 @@ class TTAFrame():
 
 
 if __name__ == "__main__":
-    testdir = "/test/sat/"
+    testdir = "data/Shaoxing/test_satellite/"
     test = os.listdir(testdir)
     solver = TTAFrame(BSNet)
     model_id = sys.argv[1]
