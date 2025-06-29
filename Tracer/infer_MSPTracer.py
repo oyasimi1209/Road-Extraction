@@ -62,7 +62,7 @@ def fix_outputs(batch_angle_outputs, batch_stop_outputs):
                 fixed_stop_outputs[i, 0] = 1
         return batch_angle_outputs[:, 0:64], fixed_stop_outputs
     else:
-        raise Exception("bad angle_outputs length={}".format(len(angle_outputs)))
+        raise Exception("bad angle_outputs length={}".format(batch_angle_outputs.shape[1]))
 
 
 def score_accuracy(stop_targets, angle_targets, stop_outputs, angle_outputs, threshold, action_only=False):
@@ -199,7 +199,7 @@ def eval(paths, m, session, starting_points_list, max_path_length=MAX_PATH_LENGT
             elif follow_targets == 'partial':
                 # (a) always use stop_targets instead of stop_outputs
                 # (b) if we are far away from graph, use angle_targets, otherwise use angle_outputs
-                extension_vertex = batch_extension_vertices[i]
+                extension_vertex = extension_vertices[i]
                 if extension_vertex.edge_pos is None or extension_vertex.edge_pos.point().distance(
                         extension_vertex.point) > SEGMENT_LENGTH * 2:
                     x = vector_to_action(batch_angle_targets[i, :], batch_stop_targets[i, :], threshold=threshold)
@@ -345,7 +345,7 @@ if __name__ == '__main__':
                 'region': REGION,
                 'rect': r.add_tol(WINDOW_SIZE / 2),
                 'search_rect': r,
-                'cache': cache,
+                #'cache': cache,
                 'starting_locations': [],
             }
             path = model_utils.Path(None, tile_data, g=g)
