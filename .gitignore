@@ -138,3 +138,5 @@ BSNet/boost_train/txt_files
 BSNet/log
 BSNet/boost_train
 .vscode
+roadtracer/model
+roadtracer_project
