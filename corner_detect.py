@@ -77,7 +77,7 @@ if __name__ == "__main__":
     os.makedirs(txt_dir, exist_ok=True)
     
     # 获取所有分割图像文件
-    image_files = [f for f in os.listdir(mask_dir) if f.endswith('_seg.png')]
+    image_files = [f for f in os.listdir(mask_dir) if f.endswith('_binary.png')]
     print(f"Found {len(image_files)} images")
     
     for mask_filename in image_files:

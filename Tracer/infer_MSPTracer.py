@@ -265,7 +265,7 @@ def graph_filter(g, threshold=0.3, min_len=None):
 
 
 if __name__ == '__main__':
-    model_path = "../model/model_best/model"
+    model_path = r"D:\AI_learning\road_extraction\Tracer\model\model"
     test_sat_dir = "/data/test/sat/"
     BRANCH_THRESHOLD = 0.4
     FOLLOW_THRESHOLD = 0.4
