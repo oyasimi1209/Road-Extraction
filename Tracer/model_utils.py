@@ -10,6 +10,8 @@ import rtree
 import scipy.ndimage
 import sys
 import time
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 
 DEBUG = False
 

@@ -7,7 +7,8 @@ import numpy
 
 import os.path
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 import time
 
 from remove_corners import remove_corners, read_graph
@@ -266,88 +267,85 @@ def graph_filter(g, threshold=0.3, min_len=None):
 
 if __name__ == '__main__':
     model_path = r"D:\AI_learning\road_extraction\Tracer\model\model"
-    test_sat_dir = "/data/test/sat/"
+    test_sat_dir = r"D:\AI_learning\road_extraction\data\Shaoxing\test_satellite"
     BRANCH_THRESHOLD = 0.4
     FOLLOW_THRESHOLD = 0.4
 
-    city_list = ["amsterdam", "chicago", "denver", "la", "montreal", "paris",
-                 "pittsburgh", "saltlakecity", "san diego", "tokyo", "toronto", "vancouver"]
+    REGION = "c2"
     MANUAL_RELATIVE = geom.Point(-4, -4).scale(TILE_SIZE)
-    for REGION in city_list:
-        corner_file="/out/corner_detect/corners/"+REGION+"_seg.txt"
-        output_fname = "/out/graph_infer/line_merge/"
-        if not os.path.isdir(output_fname):
-            os.mkdir(output_fname)
-        print("test city:" + REGION)
-        TILE_START = geom.Point(-4, -4).scale(TILE_SIZE)
-        TILE_END = TILE_START.add(geom.Point(8, 8).scale(TILE_SIZE))
+    corner_file = r"D:\AI_learning\road_extraction\out\corner_detect\corners\Shaoxing_seg.txt"
+    output_fname = r"D:\AI_learning\road_extraction\out\graph_infer\line_merge"
+    if not os.path.isdir(output_fname):
+        os.makedirs(output_fname)
+    print("test city:" + REGION)
+    TILE_START = geom.Point(-4, -4).scale(TILE_SIZE)
+    TILE_END = TILE_START.add(geom.Point(8, 8).scale(TILE_SIZE))
 
-        tileloader.tile_dir = test_sat_dir
+    tileloader.tile_dir = test_sat_dir
+    tileloader.pytiles_path = r"D:\AI_learning\road_extraction\data\Shaoxing\pytiles.json"
+    tileloader.startlocs_path = r"D:\AI_learning\road_extraction\out\corner_detect\corners\Shaoxing_starting_locations.json"  # 如有需要请修改为实际文件名
 
-        tileloader.pytiles_path = "/json/pytiles.json"
-        tileloader.startlocs_path = "/json/starting_locations.json"
+    print('reading tiles')
 
-        print('reading tiles')
+    tiles = tileloader.Tiles(PATHS_PER_TILE_AXIS, SEGMENT_LENGTH, 16, TILE_MODE)
 
-        tiles = tileloader.Tiles(PATHS_PER_TILE_AXIS, SEGMENT_LENGTH, 16, TILE_MODE)
+    print('initializing model')
+    model.BATCH_SIZE = 1
+    m = model.Model(tiles.num_input_channels())
+    session = tf.Session()
+    m.saver.restore(session, model_path)
 
-        print('initializing model')
-        model.BATCH_SIZE = 1
-        m = model.Model(tiles.num_input_channels())
-        session = tf.Session()
-        m.saver.restore(session, model_path)
+    node_list = [] # save all nodes already explored
 
-        node_list = [] # save all nodes already explored
+    if EXISTING_GRAPH_FNAME is None:
+        # read
+        rect = geom.Rectangle(TILE_START, TILE_END)
+        tile_data = tiles.get_tile_data(REGION, rect)
 
-        if EXISTING_GRAPH_FNAME is None:
-            # read
-            rect = geom.Rectangle(TILE_START, TILE_END)
-            tile_data = tiles.get_tile_data(REGION, rect)
+        # generate path list
+        path_list=[]
+        start_points=[]
+        with open(corner_file,"r") as f:
+            for line in f.readlines():
+                temp=line.strip().split(",")
+                start_points.append([int(temp[0]),int(temp[1])])
 
-            # generate path list
-            path_list=[]
-            start_points=[]
-            with open(corner_file,"r") as f:
-                for line in f.readlines():
-                    temp=line.strip().split(",")
-                    start_points.append([int(temp[0]),int(temp[1])])
+        graph_num=0
+        s_pt=start_points.pop()
 
-            graph_num=0
-            s_pt=start_points.pop()
+        pos3_point=geom.Point(s_pt[0],s_pt[1]).add(MANUAL_RELATIVE)
+        pos3_pos=pos3_point
+        pos4_point = geom.Point(s_pt[0]+5, s_pt[1]).add(MANUAL_RELATIVE)
+        pos4_pos = pos4_point
+        start_loc = [{
+            'point': pos3_point,
+            'edge_pos': pos3_pos,
+        }, {
+            'point': pos4_point,
+            'edge_pos': pos4_pos,
+        }]
+        tile_data['starting_locations'] = start_loc
+        print("start loc:{}".format(start_loc))
+        tile_data['gc'] = None
+        path1 = model_utils.Path(tile_data['gc'], tile_data, start_loc=start_loc)
 
-            pos3_point=geom.Point(s_pt[0],s_pt[1]).add(MANUAL_RELATIVE)
-            pos3_pos=pos3_point
-            pos4_point = geom.Point(s_pt[0]+5, s_pt[1]).add(MANUAL_RELATIVE)
-            pos4_pos = pos4_point
-            start_loc = [{
-                'point': pos3_point,
-                'edge_pos': pos3_pos,
-            }, {
-                'point': pos4_point,
-                'edge_pos': pos4_pos,
-            }]
-            tile_data['starting_locations'] = start_loc
-            print("start loc:{}".format(start_loc))
-            tile_data['gc'] = None
-            path1 = model_utils.Path(tile_data['gc'], tile_data, start_loc=start_loc)
+        compute_targets = SAVE_EXAMPLES or FOLLOW_TARGETS
+        result = eval([path1], m, session,start_points, save=SAVE_EXAMPLES, compute_targets=compute_targets,
+                      follow_targets=FOLLOW_TARGETS)
 
-            compute_targets = SAVE_EXAMPLES or FOLLOW_TARGETS
-            result = eval([path1], m, session,start_points, save=SAVE_EXAMPLES, compute_targets=compute_targets,
-                          follow_targets=FOLLOW_TARGETS)
+        save_path = output_fname+"{}.infer.graph".format(REGION)
+        path1.graph.save(save_path)
 
-            save_path = output_fname+"{}.infer.graph".format(REGION)
-            path1.graph.save(save_path)
-
-        else:
-            g = graph.read_graph(EXISTING_GRAPH_FNAME)
-            r = g.bounds()
-            tile_data = {
-                'region': REGION,
-                'rect': r.add_tol(WINDOW_SIZE / 2),
-                'search_rect': r,
-                #'cache': cache,
-                'starting_locations': [],
-            }
-            path = model_utils.Path(None, tile_data, g=g)
-            for vertex in g.vertices:
-                path.prepend_search_vertex(vertex)
+    else:
+        g = graph.read_graph(EXISTING_GRAPH_FNAME)
+        r = g.bounds()
+        tile_data = {
+            'region': REGION,
+            'rect': r.add_tol(WINDOW_SIZE / 2),
+            'search_rect': r,
+            #'cache': cache,
+            'starting_locations': [],
+        }
+        path = model_utils.Path(None, tile_data, g=g)
+        for vertex in g.vertices:
+            path.prepend_search_vertex(vertex)

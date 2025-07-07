@@ -7,8 +7,10 @@ import numpy
 import os
 import random
 import rtree
+import imageio
 import scipy.ndimage
 import time
+import tensorflow.compat.v1 as tf
 
 # parameters defined in infer.py so it needn't edit here
 tile_dir = '/data/imagery/'
@@ -23,7 +25,7 @@ REGIONS = TRAINING_REGIONS + ['chicago']
 
 def load_tile(region, i, j, mode='all'):
 	prefix = '{}/{}_{}_{}_'.format(tile_dir, region, int(i), int(j))
-	sat_im = scipy.ndimage.imread(prefix + 'sat.png')
+	sat_im = imageio.imread(prefix + 'sat.png')
 	if sat_im.shape == (tile_size, tile_size, 4):
 		sat_im = sat_im[:, :, 0:3]
 	return {
